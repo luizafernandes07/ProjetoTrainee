@@ -25,7 +25,8 @@ O **AgnusGestao** enquadra-se na categoria de **Sistema de Gerenciamento**. Seu 
 erDiagram
     USUARIO ||--o{ VENDA : realiza
     USUARIO ||--o{ MOVIMENTACAO_FINANCEIRA : registra
-    PRODUTO ||--o{ VENDA : pertence_a
+    VENDA ||--|{ ITEM_VENDA : contem
+    PRODUTO ||--o{ ITEM_VENDA : inclui
 
     USUARIO {
         uuid id PK
@@ -51,6 +52,14 @@ erDiagram
         decimal valor_total
         enum forma_pagamento "DINHEIRO | PIX | CARTAO"
         datetime data_venda
+    }
+
+    ITEM_VENDA {
+        uuid id PK
+        uuid venda_id FK
+        uuid produto_id FK
+        int quantidade
+        decimal preco_unitario
     }
 
     MOVIMENTACAO_FINANCEIRA {

@@ -70,3 +70,14 @@ erDiagram
         string descricao
         datetime data_movimentacao
     }
+
+    ## 🛠️ Como Executar a Aplicação (Docker)
+
+### Pré-requisitos
+- Docker Engine e Docker Compose instalados.
+
+### Passos para Execução
+1. Clone o repositório e acesse a pasta do projeto:
+   ```bash
+   git clone [https://github.com/luizafernandes07/ProjetoTrainee.git](https://github.com/luizafernandes07/ProjetoTrainee.git)
+   cd ProjetoTrainee

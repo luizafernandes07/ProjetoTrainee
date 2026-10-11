@@ -1,5 +1,4 @@
-
-# AgnusGestao - Sistema de Gestão do Grupo de Oração Agnus Dei
+ # AgnusGestao - Sistema de Gestão do Grupo de Oração Agnus Dei
 
 Sistema de gerenciamento para controle de caixa, estoque e vendas do Grupo de Oração Agnus Dei, pertencente à Paróquia São Vicente Ferrer (Formiga - MG).
 
@@ -70,14 +69,30 @@ erDiagram
         string descricao
         datetime data_movimentacao
     }
+```
+# AgnusGestao - Backend (Semana 2)
 
-    ## 🛠️ Como Executar a Aplicação (Docker)
+Projeto backend desenvolvido em Node.js com Express, Sequelize e PostgreSQL, utilizando Clean Architecture e conteinerização via Docker.
 
-### Pré-requisitos
-- Docker Engine e Docker Compose instalados.
+## 🛠️ Tecnologias Utilizadas
+- **Node.js** (v18+)
+- **Express**
+- **Sequelize ORM**
+- **PostgreSQL**
+- **Docker & Docker Compose**
 
-### Passos para Execução
-1. Clone o repositório e acesse a pasta do projeto:
+---
+
+## 🚀 Como Executar o Projeto
+
+### Pró-requisitos
+- [Git](https://git-scm.com/)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) instalado e em execução.
+
+### Passos para execução
+
+1. **Clonar o repositório:**
    ```bash
    git clone [https://github.com/luizafernandes07/ProjetoTrainee.git](https://github.com/luizafernandes07/ProjetoTrainee.git)
    cd ProjetoTrainee
+```

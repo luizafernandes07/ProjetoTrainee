@@ -25,6 +25,15 @@ const Usuario = sequelize.define('Usuario', {
     type: DataTypes.ENUM('ADMIN', 'VOLUNTARIO'),
     defaultValue: 'VOLUNTARIO',
   },
+  // --- Colunas para Recuperação de Senha por E-mail (Semana 3) ---
+  token_recuperacao: {
+    type: DataTypes.STRING,
+    allowNull: true,
+  },
+  token_recuperacao_expira: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
 }, {
   tableName: 'usuarios',
   timestamps: true,

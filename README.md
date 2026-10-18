@@ -114,3 +114,27 @@ A API foi executada e testada localmente, com resposta confirmada no endereço `
 ### 5.5. Resultado da semana
 
 Foi estruturado o backend, implementados os modelos e relacionamentos das entidades e preparados os arquivos de configuração do banco de dados e do Docker. O teste local também confirmou o funcionamento inicial da API, estabelecendo a base para as próximas etapas do projeto.
+
+## Semana 3 — Autenticação, Controle de Acesso (RBAC) e Recuperação de Senha
+
+Nesta etapa, foram implementados os mecanismos de segurança da API do backend **Agnus Gestão**:
+
+* **Autenticação Segura (JWT):** Geração de tokens de acesso seguros para o usuário autenticado.
+* **Criptografia de Senhas:** Utilização da biblioteca `bcryptjs` para hashing de senhas.
+* **Perfis de Acesso (RBAC):** Controle de permissões baseado em níveis de acesso (`ADMIN` e `VOLUNTARIO`).
+* **Recuperação de Senha por E-mail:** Fluxo completo com emissão de token temporário (`token_recuperacao` e `token_recuperacao_expira`) para redefinição de senha.
+* **Ambiente Dockerizado:** Banco de dados PostgreSQL rodando em container Docker com sincronização e *seed* automático do usuário administrador inicial (`admin@agnus.com` / `123456`).
+
+---
+### Rotas de Autenticação
+
+* **`POST /auth/login`**: Autentica o usuário e gera o Token JWT.
+* **`POST /auth/forgot-password`**: Solicita a redefinição de senha e gera o token temporário.
+* **`POST /auth/reset-password`**: Redefine a senha utilizando o token temporário.
+
+---
+
+### Testes via Postman
+
+1. Importar o arquivo da collection (`.json`) no Postman.
+2. Executar rota `POST /auth/login`. O token JWT será salvo automaticamente na variável `{{token}}` para autenticar as próximas requisições.

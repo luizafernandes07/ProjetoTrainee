@@ -70,71 +70,101 @@ erDiagram
         datetime data_movimentacao
     }
 ```
+## 5. Semana 2 — Estruturação do Backend e Banco de Dados
 
-## 5. Semana 2 — Estruturação do Backend
+Nesta etapa, foi estruturada a base técnica do backend do **Agnus Gestão**, configurando o servidor de aplicação, o banco de dados relacional e a containerização do ambiente.
 
-### 5.1. Tecnologias utilizadas
+### 5.1. Tecnologias Utilizadas
 
-- **Node.js e Express:** execução e estruturação do servidor.
-- **PostgreSQL e Sequelize ORM:** banco de dados e mapeamento das entidades.
-- **Docker e Docker Compose:** configuração do ambiente de execução.
-- **dotenv:** gerenciamento das variáveis de ambiente.
+- **Node.js & Express:** Configuração do servidor Web e gerenciamento das rotas HTTP.
+- **PostgreSQL & Sequelize ORM:** Banco de dados relacional e mapeamento objeto-relacional (ORM) para modelagem das entidades.
+- **Docker & Docker Compose:** Containerização da aplicação e do banco de dados para padronização do ambiente de desenvolvimento.
+- **dotenv:** Gerenciamento seguro de variáveis de ambiente.
 
-### 5.2. Organização do projeto
+### 5.2. Arquitetura do Projeto
 
-O backend foi organizado em diretórios:
+A aplicação foi organizada seguindo o padrão de arquitetura em camadas:
 
-- `src/config/`: configuração do banco de dados.
-- `src/models/`: modelos das entidades e seus relacionamentos.
-- `src/controllers/`: diretório destinado aos controladores.
-- `src/routes/`: organização das rotas da API.
-- `src/middlewares/`: tratamento de erros.
-- `src/app.js`: configuração e inicialização do servidor.
+- `src/config/`: Configuração de conexão com o PostgreSQL via Sequelize.
+- `src/models/`: Modelos das entidades do banco de dados e suas associações.
+- `src/controllers/`: Regras de fluxo e manipulação das requisições/respostas.
+- `src/routes/`: Mapeamento e declaração dos endpoints da API.
+- `src/middlewares/`: Tratamento centralizado de erros e interceptação de requisições.
+- `src/app.js`: Ponto de entrada para inicialização da aplicação Express.
 
-Também foram criados os arquivos de configuração do ambiente e do Docker.
+### 5.3. Modelagem de Entidades e Relacionamentos
 
-### 5.3. Implementação dos modelos
+Os modelos foram mapeados via Sequelize com tipos de dados, chaves primárias UUID e restrições:
 
-Os modelos foram implementados com Sequelize ORM, definindo atributos, tipos de dados e restrições.
+- **Usuario:** Identificador único, nome, e-mail único, hash da senha e perfil de acesso (`ADMIN` ou `VOLUNTARIO`).
+- **Produto:** Identificador único, nome, categoria (`ALIMENTO` ou `ARTIGO_RELIGIOSO`), preço unitário, quantidade em estoque e status (`ativo`).
+- **Venda:** Identificador único, chave estrangeira do usuário responsável, valor total, forma de pagamento (`DINHEIRO`, `PIX` ou `CARTAO`) e data do registro.
+- **ItemVenda:** Tabela associativa entre Venda e Produto, armazenando quantidade, preço unitário e subtotal.
+- **MovimentacaoFinanceira:** Registro de caixa vinculado à venda e ao usuário, contendo tipo (`ENTRADA` ou `SAIDA`), valor e descrição.
 
-- **Usuario:** ID único (UUID), nome, e-mail único, hash da senha e perfil (`ADMIN` ou `VOLUNTARIO`).
-- **Produto:** ID, nome, categoria, preço, quantidade em estoque e situação (ativo ou inativo).
-- **Venda:** ID, usuário responsável, valor total, forma de pagamento e data da venda.
-- **ItemVenda:** ID, venda associada, produto associado, quantidade e preço unitário.
-- **MovimentacaoFinanceira:** ID, usuário responsável, tipo (`ENTRADA` ou `SAIDA`), valor, descrição e data da movimentação.
-
-Os relacionamentos entre as entidades foram definidos em `src/models/index.js`.
-
-### 5.4. API e execução
-
-Foi configurada a aplicação Express, com uma rota inicial para verificar o funcionamento do servidor e um middleware global para tratamento de erros em JSON.
-
-A API foi executada e testada localmente, com resposta confirmada no endereço `http://localhost:3000`.
-
-### 5.5. Resultado da semana
-
-Foi estruturado o backend, implementados os modelos e relacionamentos das entidades e preparados os arquivos de configuração do banco de dados e do Docker. O teste local também confirmou o funcionamento inicial da API, estabelecendo a base para as próximas etapas do projeto.
-
-## Semana 3 — Autenticação, Controle de Acesso (RBAC) e Recuperação de Senha
-
-Nesta etapa, foram implementados os mecanismos de segurança da API do backend **Agnus Gestão**:
-
-* **Autenticação Segura (JWT):** Geração de tokens de acesso seguros para o usuário autenticado.
-* **Criptografia de Senhas:** Utilização da biblioteca `bcryptjs` para hashing de senhas.
-* **Perfis de Acesso (RBAC):** Controle de permissões baseado em níveis de acesso (`ADMIN` e `VOLUNTARIO`).
-* **Recuperação de Senha por E-mail:** Fluxo completo com emissão de token temporário (`token_recuperacao` e `token_recuperacao_expira`) para redefinição de senha.
-* **Ambiente Dockerizado:** Banco de dados PostgreSQL rodando em container Docker com sincronização e *seed* automático do usuário administrador inicial (`admin@agnus.com` / `123456`).
-
----
-### Rotas de Autenticação
-
-* **`POST /auth/login`**: Autentica o usuário e gera o Token JWT.
-* **`POST /auth/forgot-password`**: Solicita a redefinição de senha e gera o token temporário.
-* **`POST /auth/reset-password`**: Redefine a senha utilizando o token temporário.
+As relações (1:N e N:M) foram consolidadas no arquivo `src/models/index.js`.
 
 ---
 
-### Testes via Postman
+## 6. Semana 3 — Autenticação, Segurança (RBAC) e Recuperação de Senha
 
-1. Importar o arquivo da collection (`.json`) no Postman.
-2. Executar rota `POST /auth/login`. O token JWT será salvo automaticamente na variável `{{token}}` para autenticar as próximas requisições.
+Nesta etapa, foram implementados os mecanismos de segurança e controle de acesso da API:
+
+- **Autenticação JWT (JSON Web Token):** Emissão de tokens assinados para controle de sessão do usuário.
+- **Criptografia de Senhas:** Hashing de senhas utilizando a biblioteca `bcryptjs`.
+- **Controle de Acesso por Perfil (RBAC):** Middleware para restrição de rotas conforme a função do usuário (`ADMIN` vs. `VOLUNTARIO`).
+- **Recuperação de Senha:** Emissão de tokens temporários com tempo de expiração para redefinição segura de credenciais.
+- **Ambiente Dockerizado com Seed:** Inicialização automatizada do banco PostgreSQL via Docker com criação do usuário administrador padrão (`admin@agnus.com` / `123456`).
+
+### Endpoints do Módulo de Autenticação (`/auth`)
+
+- `POST /auth/login` — Autentica o usuário e retorna o Token JWT.
+- `POST /auth/forgot-password` — Solicita a redefinição de senha e gera o token de recuperação.
+- `POST /auth/reset-password` — Redefine a senha utilizando o token temporário.
+
+---
+
+## 7. Semana 4 — Entidades Centrais, Transações Atômicas e Regras de Negócio
+
+Nesta etapa, foi finalizado o fluxo comercial principal do sistema, conectando o catálogo de **Produtos**, o registro de **Vendas** e a gerência de **Movimentações Financeiras** sob regras estritas de controle de estoque e transações de banco de dados.
+
+### 7.1. Destaques da Implementação
+
+- **CRUD Completo de Produtos:** Operações para criação, consulta, atualização e remoção/desativação de itens no catálogo.
+- **Transações Atômicas (`sequelize.transaction`):** O registro da venda, a gravação dos itens vendidos, o abatimento no estoque e o lançamento da movimentação financeira no caixa são executados em bloco único. Caso ocorra falha em qualquer etapa, a transação sofre `rollback` automático.
+- **Validação e Controle Automático de Estoque:** Impedimento de vendas com quantidade zerada (`<= 0`) ou superior ao saldo disponível no banco, retornando `400 Bad Request`.
+- **Proteção de Rotas (RBAC):** Manutenção de produtos restrita a perfil `ADMIN`; consulta de produtos e lançamento de vendas liberados para `ADMIN` e `VOLUNTARIO`.
+
+---
+
+### 7.2. Mapeamento de Endpoints (Semana 4)
+
+#### 🛍️ Módulo de Produtos (`/produtos`)
+
+| Método | Endpoint | Permissão | Descrição |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/produtos` | Autenticado | Lista todos os produtos do catálogo |
+| `GET` | `/produtos/:id` | Autenticado | Exibe os detalhes de um produto específico por ID |
+| `POST` | `/produtos` | `ADMIN` | Cadastra um novo produto |
+| `PUT` | `/produtos/:id` | `ADMIN` | Atualiza os dados de um produto |
+| `DELETE` | `/produtos/:id` | `ADMIN` | Remove ou desativa um produto |
+
+#### 💰 Módulo de Vendas (`/vendas`)
+
+| Método | Endpoint | Permissão | Descrição |
+| :--- | :--- | :--- | :--- |
+| `POST` | `/vendas` | Autenticado | Registra uma nova venda com baixa de estoque e lançamento financeiro |
+| `GET` | `/vendas` | Autenticado | Lista o histórico de vendas (filtrado por usuário se `VOLUNTARIO`) |
+| `GET` | `/vendas/:id` | Autenticado | Consulta os detalhes de uma venda e seus itens por ID |
+
+---
+
+### 7.3. Validação dos Testes (Postman & Docker)
+
+As rotas e regras de negócio foram validadas no Postman com a aplicação rodando em ambiente Docker:
+
+1. **Cadastrar Produto (`POST /produtos`):** Confirmação de criação (`201 Created`) com geração de UUID.
+2. **Consultar Estoque (`GET /produtos`):** Verificação do saldo inicial do produto cadastrado.
+3. **Realizar Venda (`POST /vendas`):** Confirmação de venda efetuada (`201 Created`), cálculo automático do subtotal e baixa imediata no estoque.
+4. **Validação de Estoque Insuficiente:** Tentativa de venda sem saldo gera erro formatado (`400 Bad Request`).
+5. **Detalhar Venda (`GET /vendas/:id`):** Retorno estruturado (`200 OK`) com dados da venda, vendedor responsável e itens associados.

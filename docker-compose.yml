@@ -1,34 +1,40 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
-    container_name: agnus_postgres_db
-    restart: always
+    container_name: agnus_postgres_db_v2
+    restart: unless-stopped
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_NAME:-agnus_gestao}
     ports:
-      - "5432:5432"
+      - "5433:5432"  # Mapeia a porta 5433 do seu PC para a 5432 do container
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-agnus_gestao}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   app:
     build: .
-    container_name: agnus_backend_app
-    restart: always
+    container_name: agnus_backend_app_v2
+    restart: unless-stopped
     ports:
-      - "${PORT:-3000}:3000"
+      - "3001:3000"  # Mapeia a porta 3001 do seu PC para a 3000 do container
+    env_file:
+      - .env
     environment:
-      - PORT=${PORT:-3000}
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-postgres}
-      - DB_NAME=${DB_NAME:-agnus_gestao}
+      PORT: ${PORT:-3000}
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_NAME: ${DB_NAME:-agnus_gestao}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules

@@ -1,164 +1,194 @@
 const sequelize = require('../config/database');
 const { Venda, ItemVenda, Produto, MovimentacaoFinanceira, Usuario } = require('../models');
+const mercadoPagoService = require('../services/mercadoPagoService');
 
-exports.realizarVenda = async (req, res, next) => {
-  const t = await sequelize.transaction();
+const carregarItensEValidar = async (itens, transaction) => {
+  if (!Array.isArray(itens) || itens.length === 0) {
+    const error = new Error('É necessário informar ao menos um item.');
+    error.status = 400;
+    throw error;
+  }
 
+  const itensAgrupados = new Map();
+  for (const item of itens) {
+    const quantidade = Number(item.quantidade);
+    if (!item.produto_id || !Number.isInteger(quantidade) || quantidade <= 0) {
+      const error = new Error('Cada item deve possuir produto_id e quantidade inteira maior que zero.');
+      error.status = 400;
+      throw error;
+    }
+    itensAgrupados.set(item.produto_id, (itensAgrupados.get(item.produto_id) || 0) + quantidade);
+  }
+
+  const itensCalculados = [];
+  let valorTotal = 0;
+  for (const [produtoId, quantidade] of itensAgrupados.entries()) {
+    const produto = await Produto.findByPk(produtoId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+
+    if (!produto || !produto.ativo) {
+      const error = new Error(`Produto ${produtoId} não encontrado ou inativo.`);
+      error.status = 404;
+      throw error;
+    }
+
+    if (produto.quantidade_estoque < quantidade) {
+      const error = new Error(`Estoque insuficiente para: ${produto.nome}.`);
+      error.status = 400;
+      throw error;
+    }
+
+    const precoUnitario = Number(produto.preco);
+    valorTotal += precoUnitario * quantidade;
+    itensCalculados.push({ produto, quantidade, precoUnitario });
+  }
+
+  return { itensCalculados, valorTotal: Number(valorTotal.toFixed(2)) };
+};
+
+const baixarEstoque = async (itensCalculados, transaction) => {
+  for (const item of itensCalculados) {
+    await item.produto.update(
+      { quantidade_estoque: item.produto.quantidade_estoque - item.quantidade },
+      { transaction }
+    );
+  }
+};
+
+const salvarItens = async (venda, itensCalculados, transaction) => {
+  await ItemVenda.bulkCreate(itensCalculados.map((item) => ({
+    venda_id: venda.id,
+    produto_id: item.produto.id,
+    quantidade: item.quantidade,
+    preco_unitario: item.precoUnitario,
+  })), { transaction });
+};
+
+exports.criarVendaPresencial = async (req, res, next) => {
+  const transaction = await sequelize.transaction();
   try {
     const { itens, forma_pagamento } = req.body;
-    const usuario_id = req.usuario.id;
-
-    // 1. Validações básicas de entrada
-    if (!itens || !Array.isArray(itens) || itens.length === 0) {
-      await t.rollback();
-      return res.status(400).json({ mensagem: 'É necessário informar ao menos um item para a venda.' });
+    const forma = forma_pagamento || 'DINHEIRO';
+    if (!['DINHEIRO', 'PIX', 'CARTAO'].includes(forma)) {
+      await transaction.rollback();
+      return res.status(400).json({ mensagem: 'Forma de pagamento inválida.' });
     }
 
-    if (!forma_pagamento) {
-      await t.rollback();
-      return res.status(400).json({ mensagem: 'A forma de pagamento é obrigatória.' });
-    }
-
-    let valorTotalVenda = 0;
-    const itensProcessados = [];
-
-    // 2. Validar produtos, quantidades e estoque disponível
-    for (const item of itens) {
-      // Impede o envio de quantidade menor ou igual a zero
-      if (!item.quantidade || item.quantidade <= 0) {
-        await t.rollback();
-        return res.status(400).json({ mensagem: 'A quantidade de cada item deve ser maior que zero.' });
-      }
-
-      const produto = await Produto.findByPk(item.produto_id, { transaction: t });
-
-      if (!produto) {
-        await t.rollback();
-        return res.status(404).json({ mensagem: `Produto ID ${item.produto_id} não encontrado.` });
-      }
-
-      // Suporta 'quantidade_estoque' ou 'estoque'
-      const estoqueAtual = produto.quantidade_estoque !== undefined ? produto.quantidade_estoque : produto.estoque;
-
-      if (estoqueAtual < item.quantidade) {
-        await t.rollback();
-        return res.status(400).json({
-          mensagem: `Estoque insuficiente para o produto ${produto.nome}. Disponível: ${estoqueAtual}`
-        });
-      }
-
-      const precoUnitario = Number(produto.preco);
-      const subtotal = precoUnitario * item.quantidade;
-      valorTotalVenda += subtotal;
-
-      itensProcessados.push({
-        produto,
-        estoqueAtual,
-        quantidade: item.quantidade,
-        preco_unitario: precoUnitario,
-        subtotal
-      });
-    }
-
-    // 3. Criar o registro principal da Venda
+    const { itensCalculados, valorTotal } = await carregarItensEValidar(itens, transaction);
     const venda = await Venda.create({
-      usuario_id,
-      forma_pagamento,
-      valor_total: valorTotalVenda,
-      status: 'CONCLUIDA'
-    }, { transaction: t });
+      usuario_id: req.usuario.id,
+      valor_total: valorTotal,
+      forma_pagamento: forma,
+      tipo_venda: 'PRESENCIAL',
+      status_pagamento: 'PAGO',
+    }, { transaction });
 
-    // 4. Criar os Itens da Venda e atualizar Estoque
-    for (const item of itensProcessados) {
-      await ItemVenda.create({
-        venda_id: venda.id,
-        produto_id: item.produto.id,
-        quantidade: item.quantidade,
-        preco_unitario: item.preco_unitario,
-        subtotal: item.subtotal
-      }, { transaction: t });
+    await salvarItens(venda, itensCalculados, transaction);
+    await baixarEstoque(itensCalculados, transaction);
 
-      // Atualiza o estoque reduzindo a quantidade vendida
-      const novaQuantidade = item.estoqueAtual - item.quantidade;
-      if (item.produto.quantidade_estoque !== undefined) {
-        await item.produto.update({ quantidade_estoque: novaQuantidade }, { transaction: t });
-      } else {
-        await item.produto.update({ estoque: novaQuantidade }, { transaction: t });
-      }
-    }
-
-    // 5. Registrar a Movimentação Financeira
     await MovimentacaoFinanceira.create({
+      usuario_id: req.usuario.id,
       venda_id: venda.id,
-      usuario_id,
       tipo: 'ENTRADA',
-      valor: valorTotalVenda,
-      descricao: `Receita gerada pela Venda ID: ${venda.id}`
-    }, { transaction: t });
+      valor: valorTotal,
+      descricao: `Venda presencial #${venda.id}`,
+    }, { transaction });
 
-    await t.commit();
+    await transaction.commit();
+    return res.status(201).json({ mensagem: 'Venda presencial realizada com sucesso!', venda });
+  } catch (error) {
+    if (!transaction.finished) await transaction.rollback();
+    return next(error);
+  }
+};
+
+exports.criarVendaOnline = async (req, res, next) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const { itens } = req.body;
+    const { itensCalculados, valorTotal } = await carregarItensEValidar(itens, transaction);
+
+    const venda = await Venda.create({
+      usuario_id: req.usuario.id,
+      valor_total: valorTotal,
+      forma_pagamento: 'PIX',
+      tipo_venda: 'ONLINE',
+      status_pagamento: 'PENDENTE',
+    }, { transaction });
+
+    await salvarItens(venda, itensCalculados, transaction);
+    // Reserva o estoque enquanto o Pix está pendente.
+    await baixarEstoque(itensCalculados, transaction);
+
+    const usuario = await Usuario.findByPk(req.usuario.id, { transaction });
+    const pagamento = await mercadoPagoService.criarPagamentoPix({
+      venda,
+      email: usuario.email,
+    });
+
+    await venda.update({
+      pagamento_externo_id: pagamento.id,
+      status_pagamento: pagamento.status || 'PENDING',
+      pix_qr_code: pagamento.qr_code,
+      pix_qr_code_base64: pagamento.qr_code_base64,
+      pix_ticket_url: pagamento.ticket_url,
+    }, { transaction });
+
+    await transaction.commit();
     return res.status(201).json({
-      mensagem: 'Venda realizada com sucesso!',
-      venda_id: venda.id,
-      valor_total: valorTotalVenda
+      mensagem: 'Pedido criado. Finalize o pagamento Pix para confirmar a compra.',
+      venda,
+      pagamento: {
+        provedor: 'Mercado Pago',
+        id: pagamento.id,
+        status: pagamento.status,
+        qr_code: pagamento.qr_code,
+        qr_code_base64: pagamento.qr_code_base64,
+        ticket_url: pagamento.ticket_url,
+      },
     });
   } catch (error) {
-    await t.rollback();
-    next(error);
+    if (!transaction.finished) await transaction.rollback();
+    return next(error);
   }
 };
 
 exports.listarVendas = async (req, res, next) => {
   try {
     const filtro = {};
-    if (req.usuario.perfil === 'VOLUNTARIO') {
-      filtro.usuario_id = req.usuario.id;
-    }
+    if (req.usuario.perfil === 'VOLUNTARIO') filtro.usuario_id = req.usuario.id;
 
     const vendas = await Venda.findAll({
       where: filtro,
       include: [
         { model: Usuario, as: 'vendedor', attributes: ['id', 'nome', 'email'] },
-        {
-          model: ItemVenda,
-          as: 'itens',
-          include: [{ model: Produto, as: 'produto', attributes: ['id', 'nome'] }]
-        }
+        { model: ItemVenda, as: 'itens', include: [{ model: Produto, as: 'produto' }] },
       ],
-      order: [['id', 'DESC']]
+      order: [['data_venda', 'DESC']],
     });
-
     return res.status(200).json(vendas);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
+
 exports.buscarPorId = async (req, res, next) => {
   try {
-    const { id } = req.params;
-
-    const venda = await Venda.findByPk(id, {
+    const venda = await Venda.findByPk(req.params.id, {
       include: [
         { model: Usuario, as: 'vendedor', attributes: ['id', 'nome', 'email'] },
-        {
-          model: ItemVenda,
-          as: 'itens',
-          include: [{ model: Produto, as: 'produto', attributes: ['id', 'nome'] }]
-        }
-      ]
+        { model: ItemVenda, as: 'itens', include: [{ model: Produto, as: 'produto' }] },
+      ],
     });
 
-    if (!venda) {
-      return res.status(404).json({ mensagem: 'Venda não encontrada.' });
-    }
-
-    // Se o usuário for VOLUNTARIO, restringe o acesso apenas às suas próprias vendas
+    if (!venda) return res.status(404).json({ mensagem: 'Venda não encontrada.' });
     if (req.usuario.perfil === 'VOLUNTARIO' && venda.usuario_id !== req.usuario.id) {
       return res.status(403).json({ mensagem: 'Acesso negado a esta venda.' });
     }
-
     return res.status(200).json(venda);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

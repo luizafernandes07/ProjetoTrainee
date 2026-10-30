@@ -1,16 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const vendaController = require('../controllers/vendaController');
+const { autenticar, autorizar } = require('../middlewares/authMiddleware');
 
-// Importa a função 'autenticar' exportada no seu middleware
-const { autenticar } = require('../middlewares/authMiddleware');
-
-// Aplica o middleware de autenticação JWT em todas as rotas de vendas
 router.use(autenticar);
-
-// Rotas de Vendas
-router.post('/', vendaController.realizarVenda);
+router.post('/presencial', autorizar('VOLUNTARIO', 'ADMIN'), vendaController.criarVendaPresencial);
+router.post('/online', vendaController.criarVendaOnline);
 router.get('/', vendaController.listarVendas);
-router.get('/:id', vendaController.buscarPorId); // Rota para buscar venda por ID
+router.get('/:id', vendaController.buscarPorId);
 
 module.exports = router;

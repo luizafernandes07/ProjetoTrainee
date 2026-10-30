@@ -11,8 +11,12 @@ const Produto = sequelize.define('Produto', {
     type: DataTypes.STRING,
     allowNull: false,
   },
+  descricao: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
   categoria: {
-    type: DataTypes.ENUM('ALIMENTO', 'ARTIGO_RELIGIOSO'),
+    type: DataTypes.STRING, // Altere de ENUM para STRING
     allowNull: false,
   },
   preco: {

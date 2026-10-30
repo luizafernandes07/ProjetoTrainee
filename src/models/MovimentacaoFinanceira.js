@@ -19,6 +19,10 @@ const MovimentacaoFinanceira = sequelize.define('MovimentacaoFinanceira', {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
   },
+  venda_id: {
+    type: DataTypes.UUID,
+    allowNull: true,
+  },
   descricao: {
     type: DataTypes.STRING,
     allowNull: false,

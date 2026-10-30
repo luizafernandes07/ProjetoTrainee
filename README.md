@@ -1,170 +1,300 @@
-# AgnusGestao - Sistema de Gestão do Grupo de Oração Agnus Dei
+# AgnusGestao — Sistema de Gestão do Grupo de Oração Agnus Dei
 
-Sistema de gerenciamento para controle de caixa, estoque e vendas do Grupo de Oração Agnus Dei, pertencente à Paróquia São Vicente Ferrer (Formiga - MG).
+Sistema de gerenciamento do catálogo, vendas, estoque e caixa do Grupo de Oração Agnus Dei, pertencente à Paróquia São Vicente Ferrer (Formiga - MG).
 
-## 1. Tema e Propósito
+## 1. Tema e propósito
 
-O **AgnusGestao** é um sistema de gerenciamento destinado ao controle financeiro do grupo de oração, incluindo a gestão do catálogo e a venda de produtos (alimentos, bebidas, terços, camisetas e artigos religiosos) comercializados nos encontros, além do controle das entradas e saídas de recursos do caixa.
+O sistema apoia o controle de produtos comercializados nos encontros, vendas presenciais e pedidos online, além do registro de entradas e saídas financeiras.
 
-## 2. Perfis de Acesso e Permissões
+## 2. Perfis de acesso
 
-- **ADMIN (Coordenador):** acesso completo ao sistema. Pode gerenciar voluntários, cadastrar e alterar produtos, registrar entradas e saídas financeiras e emitir relatórios.
-- **VOLUNTARIO (Membro Servidor):** acesso restrito à consulta do catálogo de produtos e ao registro de vendas realizadas durante os encontros.
+- **ADMIN:** gerencia produtos e movimentações financeiras, consulta vendas e relatórios.
+- **VOLUNTARIO:** consulta produtos, registra vendas presenciais e consulta apenas as próprias vendas.
+- O cadastro público (`POST /auth/register`) cria somente usuários `VOLUNTARIO`. A criação de ADMIN é feita pelo seed configurado no ambiente, evitando elevação de privilégio pelo formulário público.
 
-## 3. Entidades de Negócio
+## 3. Entidades
 
-1. **Usuario:** cadastro de membros, voluntários e coordenadores, utilizado para autenticação JWT e controle de permissões.
-2. **Produto:** cadastro dos itens comercializados nos encontros, divididos em alimentos e artigos religiosos.
-3. **Venda:** registro das transações comerciais, incluindo valor total, voluntário responsável e forma de pagamento.
-4. **MovimentacaoFinanceira:** controle do caixa do grupo, registrando entradas e despesas ou saídas, com descrição e data.
+- `Usuario`: autenticação, e-mail, hash de senha e perfil.
+- `Produto`: catálogo, preço, categoria, estoque e situação.
+- `Venda`: responsável, valor, forma/tipo de venda e estado do pagamento.
+- `ItemVenda`: produtos, quantidades e preço unitário de cada venda.
+- `MovimentacaoFinanceira`: entradas e saídas do caixa, incluindo vínculo com venda.
 
-## 4. Diagrama de Entidade-Relacionamento (DER)
+## 4. Tecnologias
 
-```mermaid
-erDiagram
-    USUARIO ||--o{ VENDA : realiza
-    USUARIO ||--o{ MOVIMENTACAO_FINANCEIRA : registra
-    VENDA ||--|{ ITEM_VENDA : contem
-    PRODUTO ||--o{ ITEM_VENDA : inclui
+Node.js, Express, PostgreSQL, Sequelize, Docker Compose, JWT, bcryptjs, Nodemailer, Axios e Mercado Pago. Relatórios são gerados com ExcelJS e CSV.
 
-    USUARIO {
-        uuid id PK
-        string nome
-        string email UK
-        string senha_hash
-        enum perfil "ADMIN | VOLUNTARIO"
-        datetime criado_em
-    }
+## 5. Como executar
 
-    PRODUTO {
-        uuid id PK
-        string nome
-        enum categoria "ALIMENTO | ARTIGO_RELIGIOSO"
-        decimal preco
-        int quantidade_estoque
-        boolean ativo
-    }
+### Pré-requisitos
 
-    VENDA {
-        uuid id PK
-        uuid usuario_id FK
-        decimal valor_total
-        enum forma_pagamento "DINHEIRO | PIX | CARTAO"
-        datetime data_venda
-    }
+- Docker e Docker Compose.
+- Uma cópia do arquivo `.env.example` chamada `.env`.
+- Credenciais SMTP para testar envio de recuperação de senha.
+- Credenciais de teste do Mercado Pago para criar cobranças Pix.
 
-    ITEM_VENDA {
-        uuid id PK
-        uuid venda_id FK
-        uuid produto_id FK
-        int quantidade
-        decimal preco_unitario
-    }
+### Configuração
 
-    MOVIMENTACAO_FINANCEIRA {
-        uuid id PK
-        uuid usuario_id FK
-        enum tipo "ENTRADA | SAIDA"
-        decimal valor
-        string descricao
-        datetime data_movimentacao
-    }
+1. Copie `.env.example` para `.env`.
+2. Altere `DB_PASSWORD`, `JWT_SECRET` e `ADMIN_PASSWORD`.
+3. Configure `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASS` e `MAIL_FROM`.
+4. Configure `MERCADOPAGO_ACCESS_TOKEN` com credencial de teste.
+5. Configure `MERCADOPAGO_WEBHOOK_SECRET` e `MERCADOPAGO_NOTIFICATION_URL` para receber notificações do Mercado Pago. A URL de notificação precisa estar acessível externamente (por exemplo, em ambiente de homologação).
+
+### Subir os serviços
+
+```bash
+docker compose up --build
 ```
-## 5. Semana 2 — Estruturação do Backend e Banco de Dados
 
-Nesta etapa, foi estruturada a base técnica do backend do **Agnus Gestão**, configurando o servidor de aplicação, o banco de dados relacional e a containerização do ambiente.
+A API ficará disponível em `http://localhost:3000`. O endpoint `GET /` verifica o estado básico do servidor.
 
-### 5.1. Tecnologias Utilizadas
+Para encerrar:
 
-- **Node.js & Express:** Configuração do servidor Web e gerenciamento das rotas HTTP.
-- **PostgreSQL & Sequelize ORM:** Banco de dados relacional e mapeamento objeto-relacional (ORM) para modelagem das entidades.
-- **Docker & Docker Compose:** Containerização da aplicação e do banco de dados para padronização do ambiente de desenvolvimento.
-- **dotenv:** Gerenciamento seguro de variáveis de ambiente.
+```bash
+docker compose down
+```
 
-### 5.2. Arquitetura do Projeto
+Para remover também os dados persistidos do PostgreSQL (ação destrutiva):
 
-A aplicação foi organizada seguindo o padrão de arquitetura em camadas:
+```bash
+docker compose down -v
+```
 
-- `src/config/`: Configuração de conexão com o PostgreSQL via Sequelize.
-- `src/models/`: Modelos das entidades do banco de dados e suas associações.
-- `src/controllers/`: Regras de fluxo e manipulação das requisições/respostas.
-- `src/routes/`: Mapeamento e declaração dos endpoints da API.
-- `src/middlewares/`: Tratamento centralizado de erros e interceptação de requisições.
-- `src/app.js`: Ponto de entrada para inicialização da aplicação Express.
+### Execução sem Docker
 
-### 5.3. Modelagem de Entidades e Relacionamentos
+Com PostgreSQL disponível e `.env` configurado:
 
-Os modelos foram mapeados via Sequelize com tipos de dados, chaves primárias UUID e restrições:
+```bash
+npm install
+npm run dev
+```
 
-- **Usuario:** Identificador único, nome, e-mail único, hash da senha e perfil de acesso (`ADMIN` ou `VOLUNTARIO`).
-- **Produto:** Identificador único, nome, categoria (`ALIMENTO` ou `ARTIGO_RELIGIOSO`), preço unitário, quantidade em estoque e status (`ativo`).
-- **Venda:** Identificador único, chave estrangeira do usuário responsável, valor total, forma de pagamento (`DINHEIRO`, `PIX` ou `CARTAO`) e data do registro.
-- **ItemVenda:** Tabela associativa entre Venda e Produto, armazenando quantidade, preço unitário e subtotal.
-- **MovimentacaoFinanceira:** Registro de caixa vinculado à venda e ao usuário, contendo tipo (`ENTRADA` ou `SAIDA`), valor e descrição.
+## 6. Semana 1 — Tema, escopo e repositório
 
-As relações (1:N e N:M) foram consolidadas no arquivo `src/models/index.js`.
+Definição do problema, delimitação das funcionalidades, identificação dos perfis e entidades principais e criação do repositório do projeto.
+
+## 7. Semana 2 — Modelagem, persistência e ambiente executável
+
+- Modelos Sequelize para `Usuario`, `Produto`, `Venda`, `ItemVenda` e `MovimentacaoFinanceira`.
+- Relacionamentos entre usuários, vendas, itens, produtos e movimentações.
+- PostgreSQL como banco relacional.
+- Dockerfile e Docker Compose para execução padronizada da API e do banco.
+- Configuração de ambiente por variáveis, sem versionar o `.env`.
+
+## 8. Semana 3 — Autenticação, perfis e recuperação de senha
+
+- Login com JWT e validação de senha com bcryptjs.
+- Middleware de autenticação e autorização por perfil.
+- Cadastro público limitado ao perfil VOLUNTARIO.
+- Recuperação de senha com token aleatório, armazenamento do hash do token e expiração de 30 minutos.
+- Envio do link de redefinição por e-mail via Nodemailer/SMTP.
+- O envio de e-mail depende de credenciais SMTP válidas configuradas no `.env`.
+
+### Endpoints de autenticação
+
+| Método | Endpoint                | Descrição                      |
+| ------ | ----------------------- | ------------------------------ |
+| POST   | `/auth/login`           | Autentica e retorna JWT        |
+| POST   | `/auth/register`        | Cadastra usuário VOLUNTARIO    |
+| POST   | `/auth/forgot-password` | Solicita e-mail de recuperação |
+| POST   | `/auth/reset-password`  | Redefine senha com token       |
+
+## 9. Semana 4 — CRUD e regras de negócio
+
+### Usuários
+
+| Método | Endpoint        | Permissão                  |
+| ------ | --------------- | -------------------------- |
+| GET    | `/usuarios`     | ADMIN                      |
+| GET    | `/usuarios/:id` | ADMIN                      |
+| POST   | `/usuarios`     | ADMIN (cria VOLUNTARIO)    |
+| PUT    | `/usuarios/:id` | ADMIN                      |
+| DELETE | `/usuarios/:id` | ADMIN (desativação lógica) |
+
+A rota pública `/auth/register` também cadastra somente VOLUNTARIO. O perfil não pode ser alterado pelo endpoint de atualização. Usuários desativados não conseguem autenticar, e a exclusão lógica preserva os vínculos históricos.
+
+### Produtos
+
+| Método | Endpoint        | Permissão   |
+| ------ | --------------- | ----------- |
+| GET    | `/produtos`     | Autenticado |
+| GET    | `/produtos/:id` | Autenticado |
+| POST   | `/produtos`     | ADMIN       |
+| PUT    | `/produtos/:id` | ADMIN       |
+| DELETE | `/produtos/:id` | ADMIN       |
+
+### Vendas
+
+| Método | Endpoint             | Permissão                                 |
+| ------ | -------------------- | ----------------------------------------- |
+| POST   | `/vendas/presencial` | VOLUNTARIO ou ADMIN                       |
+| POST   | `/vendas/online`     | Autenticado                               |
+| GET    | `/vendas`            | ADMIN vê todas; VOLUNTARIO vê as próprias |
+| GET    | `/vendas/:id`        | ADMIN; VOLUNTARIO somente a própria venda |
+
+Cada venda grava seus itens em `ItemVenda`. A validação de quantidade e estoque e a baixa de estoque são realizadas em transação de banco de dados. Na venda presencial, a movimentação de entrada é registrada junto com a venda. Na venda online, o estoque fica reservado enquanto o pagamento Pix aguarda confirmação.
+
+### Corpo de exemplo — venda presencial
+
+```json
+{
+  "itens": [
+    {
+      "produto_id": "UUID_DO_PRODUTO",
+      "quantidade": 2
+    }
+  ],
+  "forma_pagamento": "DINHEIRO"
+}
+```
+
+Formas aceitas: `DINHEIRO`, `PIX` e `CARTAO`.
+
+## 10. Semana 5 — Operações financeiras e integração externa
+
+### Movimentações financeiras
+
+| Método | Endpoint                                | Permissão |
+| ------ | --------------------------------------- | --------- |
+| GET    | `/movimentacoes`                        | ADMIN     |
+| POST   | `/movimentacoes`                        | ADMIN     |
+| DELETE | `/movimentacoes/:id`                    | ADMIN     |
+| GET    | `/movimentacoes/exportar?formato=excel` | ADMIN     |
+| GET    | `/movimentacoes/exportar?formato=csv`   | ADMIN     |
+
+Corpo de exemplo para lançamento manual:
+
+```json
+{
+  "tipo": "ENTRADA",
+  "valor": 120.0,
+  "descricao": "Oferta do encontro"
+}
+```
+
+`tipo` aceita `ENTRADA` ou `SAIDA`, e `valor` deve ser positivo.
+
+### Integração com Mercado Pago — Pix
+
+O endpoint `POST /vendas/online` cria um pedido, registra os itens, reserva o estoque e solicita uma cobrança Pix à API do Mercado Pago. A resposta inclui os dados retornados pelo provedor, como QR Code, código Pix e link de pagamento (quando disponibilizados pela API).
+
+Corpo de exemplo:
+
+```json
+{
+  "itens": [
+    {
+      "produto_id": "UUID_DO_PRODUTO",
+      "quantidade": 1
+    }
+  ]
+}
+```
+
+A confirmação do pagamento é recebida em:
+
+`POST /pagamentos/mercadopago/webhook`
+
+O webhook valida a assinatura configurada, consulta o pagamento diretamente na API do Mercado Pago e atualiza a venda. Quando o pagamento é aprovado, registra a entrada no caixa. Em estados de pagamento cancelado/rejeitado/estornado, o estoque reservado é devolvido. Para testar a integração, são necessárias credenciais de teste do Mercado Pago e uma URL pública de notificação configurada no painel do provedor.
+
+## 11. Collection obrigatória do Postman
+
+Arquivo: `docs/postman/Agnus_Gestao_Postman_Collection.json`
+
+### Importação
+
+1. Abrir o Postman.
+2. Selecionar **Import**.
+3. Escolher o arquivo JSON acima.
+4. Confirmar a importação.
+5. Manter `baseUrl` como `http://localhost:3000` ou ajustar para o ambiente de avaliação.
+
+A collection possui pastas para saúde da API, autenticação, produtos, vendas, movimentações e testes de permissões. Os logins capturam os tokens JWT nas variáveis `token_admin` e `token_voluntario`.
+
+### Dados de teste
+
+O usuário ADMIN inicial é criado com `ADMIN_EMAIL` e `ADMIN_PASSWORD` definidos no `.env`. Não há credenciais reais incluídas na collection. Após cadastrar um voluntário por `/auth/register`, use o mesmo e-mail e senha no login de VOLUNTARIO.
+
+Para testar recuperação de senha, configure SMTP. Para redefinir, use o token recebido no e-mail. Para testar pagamento Pix, configure o token de teste do Mercado Pago e o webhook.
+
+## 12. Variáveis de ambiente
+
+| Variável                                                        | Finalidade                         |
+| --------------------------------------------------------------- | ---------------------------------- | --- | -------------- | ------------------------------------------------------- |
+| `PORT`                                                          | Porta da API                       |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`       | Conexão PostgreSQL                 |
+| `JWT_SECRET`, `JWT_EXPIRES_IN`                                  | Assinatura e validade do JWT       |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `ADMIN_NAME`                   | Seed do administrador              |
+| `MAIL_HOST`, `MAIL_PORT`, `MAIL_USER`, `MAIL_PASS`, `MAIL_FROM` | Envio de e-mail                    |
+| `MERCADOPAGO_ACCESS_TOKEN`                                      | Credencial da API Mercado Pago     |
+| `MERCADOPAGO_WEBHOOK_SECRET`                                    | Validação de assinatura do webhook |
+| `MERCADOPAGO_NOTIFICATION_URL`                                  | URL pública para notificações      |
+| `FRONTEND_ORIGIN`                                               | Origem autorizada pelo CORS        | \n  | `FRONTEND_URL` | Base do link de redefinição de senha enviado por e-mail |
+
+**Importante:** nunca envie `.env`, tokens ou credenciais para o Git. O arquivo `.env.example` contém somente valores ilustrativos.
+
+## 13. Situação do cronograma
+
+- **Semana 1:** tema, escopo, modelagem inicial e repositório.
+- **Semana 2:** modelagem, persistência e execução com Docker.
+- **Semana 3:** autenticação, perfis e recuperação de senha por e-mail.
+- **Semana 4:** CRUD das entidades centrais e regras de negócio.
+- **Semana 5:** operações financeiras e integração Pix com Mercado Pago.
+
+As funcionalidades que dependem de serviços externos só podem ser consideradas testadas após configurar credenciais válidas e executar os fluxos no ambiente de homologação.
+
+## Semana 5 — Conclusão dos CRUDs e Exportação de Relatórios Financeiros
+
+Nesta etapa final da Semana 5, consolidamos as operações de CRUD do sistema, aplicando regras rigorosas de **integridade e imutabilidade contábil**, além de disponibilizar a exportação de relatórios financeiros consolidados em formatos **Excel (`.xlsx`)** e **CSV (`.csv`)**.
 
 ---
 
-## 6. Semana 3 — Autenticação, Segurança (RBAC) e Recuperação de Senha
+### 8.1. Módulo Financeiro & Regras de Integridade Contábil (`/movimentacoes`)
 
-Nesta etapa, foram implementados os mecanismos de segurança e controle de acesso da API:
+Para preservar a rastreabilidade e a transparência das finanças do grupo de oração, o módulo adota o princípio de **auditabilidade contábil**:
 
-- **Autenticação JWT (JSON Web Token):** Emissão de tokens assinados para controle de sessão do usuário.
-- **Criptografia de Senhas:** Hashing de senhas utilizando a biblioteca `bcryptjs`.
-- **Controle de Acesso por Perfil (RBAC):** Middleware para restrição de rotas conforme a função do usuário (`ADMIN` vs. `VOLUNTARIO`).
-- **Recuperação de Senha:** Emissão de tokens temporários com tempo de expiração para redefinição segura de credenciais.
-- **Ambiente Dockerizado com Seed:** Inicialização automatizada do banco PostgreSQL via Docker com criação do usuário administrador padrão (`admin@agnus.com` / `123456`).
+- **Sem Atualização Direta (`PUT`/`PATCH`):** Lançamentos financeiros **não podem ser editados**. Em caso de erro de digitação ou lançamento indevido, a correção deve ser feita via **estorno/remoção** (`DELETE`).
+- **Lançamentos Manuais:** Permite registrar entradas (doações, ofertas) e saídas (despesas operacionais), vinculando cada operação ao usuário responsável.
 
-### Endpoints do Módulo de Autenticação (`/auth`)
+#### Endpoints do Módulo Financeiro
 
-- `POST /auth/login` — Autentica o usuário e retorna o Token JWT.
-- `POST /auth/forgot-password` — Solicita a redefinição de senha e gera o token de recuperação.
-- `POST /auth/reset-password` — Redefine a senha utilizando o token temporário.
-
----
-
-## 7. Semana 4 — Entidades Centrais, Transações Atômicas e Regras de Negócio
-
-Nesta etapa, foi finalizado o fluxo comercial principal do sistema, conectando o catálogo de **Produtos**, o registro de **Vendas** e a gerência de **Movimentações Financeiras** sob regras estritas de controle de estoque e transações de banco de dados.
-
-### 7.1. Destaques da Implementação
-
-- **CRUD Completo de Produtos:** Operações para criação, consulta, atualização e remoção/desativação de itens no catálogo.
-- **Transações Atômicas (`sequelize.transaction`):** O registro da venda, a gravação dos itens vendidos, o abatimento no estoque e o lançamento da movimentação financeira no caixa são executados em bloco único. Caso ocorra falha em qualquer etapa, a transação sofre `rollback` automático.
-- **Validação e Controle Automático de Estoque:** Impedimento de vendas com quantidade zerada (`<= 0`) ou superior ao saldo disponível no banco, retornando `400 Bad Request`.
-- **Proteção de Rotas (RBAC):** Manutenção de produtos restrita a perfil `ADMIN`; consulta de produtos e lançamento de vendas liberados para `ADMIN` e `VOLUNTARIO`.
+|  Método  | Endpoint                                |       Proteção / RBAC        | Descrição                                                        |
+| :------: | :-------------------------------------- | :--------------------------: | :--------------------------------------------------------------- |
+|  `GET`   | `/movimentacoes`                        | Autenticado (`Bearer Token`) | Lista o histórico de entradas e saídas ordenado por data.        |
+|  `POST`  | `/movimentacoes`                        |    Autenticado (`ADMIN`)     | Registra uma nova entrada ou saída manual no caixa.              |
+| `DELETE` | `/movimentacoes/:id`                    |    Autenticado (`ADMIN`)     | Estorna/remove um lançamento financeiro incorreto.               |
+|  `GET`   | `/movimentacoes/exportar?formato=excel` |    Autenticado (`ADMIN`)     | Gera e faz o download do relatório formatado em Excel (`.xlsx`). |
+|  `GET`   | `/movimentacoes/exportar?formato=csv`   |    Autenticado (`ADMIN`)     | Gera e faz o download do extrato delimitado em CSV (`.csv`).     |
 
 ---
 
-### 7.2. Mapeamento de Endpoints (Semana 4)
+### 8.2. Serviços de Exportação (`src/services/exportService.js`)
 
-#### 🛍️ Módulo de Produtos (`/produtos`)
-
-| Método | Endpoint | Permissão | Descrição |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/produtos` | Autenticado | Lista todos os produtos do catálogo |
-| `GET` | `/produtos/:id` | Autenticado | Exibe os detalhes de um produto específico por ID |
-| `POST` | `/produtos` | `ADMIN` | Cadastra um novo produto |
-| `PUT` | `/produtos/:id` | `ADMIN` | Atualiza os dados de um produto |
-| `DELETE` | `/produtos/:id` | `ADMIN` | Remove ou desativa um produto |
-
-#### 💰 Módulo de Vendas (`/vendas`)
-
-| Método | Endpoint | Permissão | Descrição |
-| :--- | :--- | :--- | :--- |
-| `POST` | `/vendas` | Autenticado | Registra uma nova venda com baixa de estoque e lançamento financeiro |
-| `GET` | `/vendas` | Autenticado | Lista o histórico de vendas (filtrado por usuário se `VOLUNTARIO`) |
-| `GET` | `/vendas/:id` | Autenticado | Consulta os detalhes de uma venda e seus itens por ID |
+- **Relatório Excel (`.xlsx`):** Desenvolvido com a biblioteca `exceljs`. Conta com layout corporativo (cabeçalho destacado em azul, linhas zebradas para facilitar a leitura, formatação monetária em `R$ #,##0.00`) e linha de resumo final contendo **Total de Entradas**, **Total de Saídas** e **Saldo Final em Caixa**.
+- **Relatório CSV (`.csv`):** Formato em texto puro delimitado por ponto e vírgula (`;`), leve e otimizado para importação direta em planilhas ou sistemas legados.
+- **Prevenção de Cache:** Respostas de exportação e listagem incluem os cabeçalhos HTTP `Cache-Control: no-cache` e `Pragma: no-cache` para garantir que Postman e clientes web sempre recebam dados atualizados.
 
 ---
 
-### 7.3. Validação dos Testes (Postman & Docker)
+## Postman Collection Obrigatória para Avaliação
 
-As rotas e regras de negócio foram validadas no Postman com a aplicação rodando em ambiente Docker:
+A coleção de requisições do Postman para testes e avaliação da API está disponível na raiz do repositório:
 
-1. **Cadastrar Produto (`POST /produtos`):** Confirmação de criação (`201 Created`) com geração de UUID.
-2. **Consultar Estoque (`GET /produtos`):** Verificação do saldo inicial do produto cadastrado.
-3. **Realizar Venda (`POST /vendas`):** Confirmação de venda efetuada (`201 Created`), cálculo automático do subtotal e baixa imediata no estoque.
-4. **Validação de Estoque Insuficiente:** Tentativa de venda sem saldo gera erro formatado (`400 Bad Request`).
-5. **Detalhar Venda (`GET /vendas/:id`):** Retorno estruturado (`200 OK`) com dados da venda, vendedor responsável e itens associados.
+**`agnus_gestao_collection.json`**
+
+### Instruções para Importação e Execução
+
+1. **Como Importar:**
+   - Abra o Postman e clique em **Import** (canto superior esquerdo).
+   - Arraste o arquivo `agnus_gestao_collection.json` ou selecione-o na pasta raiz do projeto.
+2. **Fluxo de Autenticação Automática:**
+   - Execute a requisição **`1.1 Login - ADMIN`** na pasta `1. Autenticação & Recuperação de Senha`.
+   - O script de teste (_Test Script_) do Postman salvará automaticamente o token JWT na variável da coleção `{{token_admin}}`.
+   - As demais requisições (Usuários, Produtos, Vendas e Financeiro) utilizarão esse token automaticamente.
+3. **Estrutura de Pastas na Collection:**
+   - `1. Autenticação & Recuperação de Senha` — Login (Admin/Voluntário), Esqueci a Senha e Redefinir Senha.
+   - `2. Usuários` — Cadastro e listagem de usuários.
+   - `3. Produtos (Estoque)` — CRUD completo de produtos (`GET`, `POST`, `PUT`, `DELETE`).
+   - `4. Vendas` — Registro de vendas com baixa atômica no estoque e registro do histórico.
+   - `5. Financeiro & Relatórios` — Consulta de caixa, lançamentos manuais, estornos e exportação (Excel/CSV).

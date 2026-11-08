@@ -3,12 +3,12 @@ const router = express.Router();
 const produtoController = require('../controllers/produtoController');
 const { autenticar, autorizar } = require('../middlewares/authMiddleware');
 
-router.use(autenticar);
-
+// Rota PÚBLICA (Catálogo da Loja)
 router.get('/', produtoController.listarProdutos);
 router.get('/:id', produtoController.buscarProdutoPorId);
 
-// Operações restritas a Administradores
+// Rotas Protegidas de ADMIN (CRUD)
+router.use(autenticar);
 router.post('/', autorizar('ADMIN'), produtoController.criarProduto);
 router.put('/:id', autorizar('ADMIN'), produtoController.atualizarProduto);
 router.delete('/:id', autorizar('ADMIN'), produtoController.deletarProduto);

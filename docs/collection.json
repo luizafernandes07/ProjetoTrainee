@@ -36,7 +36,7 @@
               }
             },
             "url": {
-              "raw": "http://localhost:3000/auth/login",
+              "raw": "http://localhost:3002/auth/login",
               "protocol": "http",
               "host": [
                 "localhost"
@@ -65,7 +65,7 @@
               }
             },
             "url": {
-              "raw": "http://localhost:3000/auth/forgot-password",
+              "raw": "http://localhost:3002/auth/forgot-password",
               "protocol": "http",
               "host": [
                 "localhost"
@@ -94,7 +94,7 @@
               }
             },
             "url": {
-              "raw": "http://localhost:3000/auth/reset-password",
+              "raw": "http://localhost:3002/auth/reset-password",
               "protocol": "http",
               "host": [
                 "localhost"
@@ -128,3 +128,4 @@
     }
   ]
 }
+

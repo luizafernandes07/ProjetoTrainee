@@ -1,0 +1,28 @@
+warning: in the working copy of '.env.example', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of '.gitignore', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'Dockerfile', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docker-compose.yml', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package-lock.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/app.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/controllers/authController.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/controllers/movimentacaoController.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/controllers/produtoController.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/controllers/usuarioController.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/controllers/vendaController.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/middlewares/authMiddleware.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/middlewares/errorHandler.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/models/MovimentacaoFinanceira.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/models/Produto.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/models/Usuario.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/models/Venda.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/models/index.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/routes/index.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/routes/movimentacaoRoutes.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/routes/usuarioRoutes.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/routes/vendaRoutes.js', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/services/emailService.js', LF will be replaced by CRLF the next time Git touches it
+docker-compose.yml:44: new blank line at EOF.
+docs/collection.json:131: new blank line at EOF.
+src/services/emailService.js:24: new blank line at EOF.

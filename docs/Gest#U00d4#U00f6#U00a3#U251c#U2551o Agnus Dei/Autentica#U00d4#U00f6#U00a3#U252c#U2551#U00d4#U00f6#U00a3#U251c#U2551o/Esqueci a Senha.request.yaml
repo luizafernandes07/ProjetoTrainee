@@ -1,0 +1,11 @@
+$kind: http-request
+url: http://localhost:3010/auth/forgot-password
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"email\": \"admin@agnus.com\"\r
+
+    }"
+order: 2000

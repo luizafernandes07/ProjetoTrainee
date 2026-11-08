@@ -3,19 +3,22 @@ const router = express.Router();
 const movimentacaoController = require('../controllers/movimentacaoController');
 const { autenticar, autorizar } = require('../middlewares/authMiddleware');
 
-// Exige autenticação para todas as rotas financeiras
+// Todas as rotas de movimentação exigem login
 router.use(autenticar);
 
-// GET /movimentacoes/exportar?formato=excel (ou ?formato=csv) - Exclusivo ADMIN
+// Exportar relatório (Excel ou CSV) - Exclusivo ADMIN
 router.get('/exportar', autorizar('ADMIN'), movimentacaoController.exportarRelatorio);
 
-// GET /movimentacoes - Listar histórico de caixa
-router.get('/', autorizar('ADMIN'), movimentacaoController.listarMovimentacoes);
+// Resumo do caixa (totais e saldo atual)
+router.get('/resumo', movimentacaoController.obterResumoCaixa);
 
-// POST /movimentacoes - Lançamento manual (Exclusivo ADMIN)
+// Listar histórico de caixa
+router.get('/', movimentacaoController.listarMovimentacoes);
+
+// Criar movimentação manual - Exclusivo ADMIN
 router.post('/', autorizar('ADMIN'), movimentacaoController.criarMovimentacao);
 
-// DELETE /movimentacoes/:id - Estorno/Exclusão (Exclusivo ADMIN)
+// Excluir movimentação - Exclusivo ADMIN
 router.delete('/:id', autorizar('ADMIN'), movimentacaoController.excluirMovimentacao);
 
 module.exports = router;

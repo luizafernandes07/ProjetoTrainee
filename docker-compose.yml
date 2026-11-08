@@ -8,9 +8,9 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_DB: ${DB_NAME:-agnus_gestao}
     ports:
-      - "5433:5432"  # Mapeia a porta 5433 do seu PC para a 5432 do container
+      - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - agnus_postgres_data_v2:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-agnus_gestao}"]
       interval: 5s
@@ -22,22 +22,23 @@ services:
     container_name: agnus_backend_app_v2
     restart: unless-stopped
     ports:
-      - "3001:3000"  # Mapeia a porta 3001 do seu PC para a 3000 do container
+      - "3002:3002"
     env_file:
       - .env
     environment:
-      PORT: ${PORT:-3000}
+      NODE_ENV: production
+      PORT: 3002
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: ${DB_USER:-postgres}
       DB_PASSWORD: ${DB_PASSWORD:-postgres}
       DB_NAME: ${DB_NAME:-agnus_gestao}
+      FRONTEND_URL: http://localhost:5180
+      FRONTEND_ORIGIN: http://localhost:5180
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - .:/usr/src/app
-      - /usr/src/app/node_modules
 
 volumes:
-  postgres_data:
+  agnus_postgres_data_v2:
+

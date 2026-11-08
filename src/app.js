@@ -1,89 +1,117 @@
 require('dotenv').config();
-
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const sequelize = require('./config/database');
 const { Usuario } = require('./models');
 const errorHandler = require('./middlewares/errorHandler');
+const openapi = require('../docs/openapi.json');
 
-const authRoutes = require('./routes');
-const produtoRoutes = require('./routes/produtoRoutes');
-const vendaRoutes = require('./routes/vendaRoutes');
-const movimentacaoRoutes = require('./routes/movimentacaoRoutes');
-const pagamentoRoutes = require('./routes/pagamentoRoutes');
-const usuarioRoutes = require('./routes/usuarioRoutes');
+// Roteador Unificado
+const routes = require('./routes');
 
 const app = express();
 
-// Configuração do CORS para permitir requisições do frontend local
+// Configuração de Origens Permitidas (CORS)
 const allowedOrigins = [
-  process.env.FRONTEND_ORIGIN || 'http://localhost:5173',
-  'http://127.0.0.1:5173'
-];
+  'http://localhost:5180',
+  'http://127.0.0.1:5180',
+  process.env.FRONTEND_URL,
+  process.env.FRONTEND_ORIGIN,
+].filter(Boolean);
 
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(null, true); // Permite requisições de desenvolvimento
+      callback(new Error('Bloqueado pelo CORS'));
     }
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use(express.json());
 
-app.use('/auth', authRoutes);
-app.use('/usuarios', usuarioRoutes);
-app.use('/produtos', produtoRoutes);
-app.use('/vendas', vendaRoutes);
-app.use('/movimentacoes', movimentacaoRoutes);
-app.use('/pagamentos', pagamentoRoutes);
+// Rota raiz de verificação.
+app.get('/', (req, res) => res.status(200).json({
+  nome: 'AgnusGestao API',
+  status: 'ok',
+  versao: '1.0.0',
+  documentacao: '/api/docs'
+}));
 
-app.get('/', (req, res) => {
-  res.status(200).json({ message: 'API AgnusGestao rodando com sucesso!' });
+app.get('/api/docs', (req, res) => res.status(200).json(openapi));
+
+app.get('/health', async (req, res) => {
+  try {
+    await sequelize.authenticate();
+    return res.status(200).json({ status: 'ok', database: 'ok' });
+  } catch {
+    return res.status(503).json({ status: 'degraded', database: 'unavailable' });
+  }
 });
 
+// Rotas versionadas e compatibilidade sem prefixo.
+app.use('/api', routes);
+app.use('/', routes);
+
+// 2. Tratamento de rotas inexistentes (404) — Mantenha sempre no FINAL
 app.use((req, res) => res.status(404).json({ mensagem: 'Endpoint não encontrado.' }));
 app.use(errorHandler);
 
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT || 3002);
 
+// Inicialização do Servidor e Banco de Dados
 const iniciarServidor = async () => {
-  if (!process.env.JWT_SECRET) {
-    throw new Error('JWT_SECRET precisa estar configurado no arquivo .env.');
-  }
+  try {
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+      throw new Error('JWT_SECRET precisa ser configurado e possuir pelo menos 32 caracteres.');
+    }
+    if (!process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD.length < 8) {
+      throw new Error('ADMIN_PASSWORD precisa ser configurado e possuir pelo menos 8 caracteres.');
+    }
 
-  await sequelize.authenticate();
-  console.log('BD conectado com sucesso');
+    await sequelize.authenticate();
+    console.log('✅ Conexão com o banco de dados realizada com sucesso!');
 
-  await sequelize.sync({ alter: true });
+    await sequelize.sync({ alter: true });
 
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const adminPassword = process.env.ADMIN_PASSWORD;
-  if (adminEmail && adminPassword) {
-    const adminExiste = await Usuario.findOne({ where: { email: adminEmail } });
+    // Compatibilidade com bancos antigos: venda presencial nao possui cliente.
+    await sequelize.query('ALTER TABLE IF EXISTS "Vendas" ALTER COLUMN "cliente_id" DROP NOT NULL');
+
+    // Seed do Administrador Inicial
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@agnus.com';
+    const adminSenha = process.env.ADMIN_PASSWORD;
+
+    let adminExiste = await Usuario.findOne({ where: { email: adminEmail } });
+
     if (!adminExiste) {
+      const senhaHash = await bcrypt.hash(adminSenha, 10);
       await Usuario.create({
         nome: process.env.ADMIN_NAME || 'Administrador',
         email: adminEmail,
-        senha_hash: await bcrypt.hash(adminPassword, 12),
-        perfil: 'ADMIN',
+        senha_hash: senhaHash,
+        perfil: 'ADMIN'
       });
-      console.log(`Usuário administrador inicial criado: ${adminEmail}`);
+      console.log(`👤 Utilizador Admin criado: ${adminEmail}`);
+    } else {
+      console.log(`👤 Utilizador Admin já configurado: ${adminEmail}`);
     }
-  }
 
-  app.listen(PORT, () => console.log(`servidor rodando na porta ${PORT}`));
+    app.listen(PORT, () => {
+      console.log(`🚀 Servidor rodando na porta ${PORT}`);
+    });
+  } catch (error) {
+    console.error('❌ Falha ao iniciar a API:', error);
+    process.exit(1);
+  }
 };
 
 if (require.main === module) {
-  iniciarServidor().catch((error) => {
-    console.error('Falha ao iniciar a API:', error.message);
-    process.exit(1);
-  });
+  iniciarServidor();
 }
 
 module.exports = app;

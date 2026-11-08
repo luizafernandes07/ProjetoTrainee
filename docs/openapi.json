@@ -1,0 +1,1074 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "AgnusGestao API",
+    "version": "1.0.0",
+    "description": "API do sistema de gestão do Grupo de Oração Agnus Dei."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3002/api"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Autenticação"
+    },
+    {
+      "name": "Produtos"
+    },
+    {
+      "name": "Vendas"
+    },
+    {
+      "name": "Usuários"
+    },
+    {
+      "name": "Financeiro"
+    },
+    {
+      "name": "CEP"
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Login",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Login"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "JWT e usuário",
+            "content": {
+              "application/json": {
+                "example": {
+                  "mensagem": "Login realizado com sucesso!",
+                  "token": "<JWT_GERADO_PELA_API>",
+                  "usuario": {
+                    "id": "00000000-0000-4000-8000-000000000001",
+                    "nome": "Maria Silva",
+                    "email": "maria@example.com",
+                    "perfil": "CLIENTE"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credenciais inválidas"
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Cadastro público de cliente",
+        "responses": {
+          "201": {
+            "description": "Cliente criado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "mensagem": "Usuário cadastrado com sucesso!",
+                  "usuario": {
+                    "id": "00000000-0000-4000-8000-000000000001",
+                    "nome": "Maria Silva",
+                    "email": "maria@example.com",
+                    "perfil": "CLIENTE"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "E-mail já cadastrado"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nome": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "senha": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                },
+                "required": [
+                  "nome",
+                  "email",
+                  "senha"
+                ]
+              },
+              "example": {
+                "nome": "Maria Silva",
+                "email": "maria@example.com",
+                "senha": "SenhaForte123"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Solicitar recuperação de senha",
+        "responses": {
+          "200": {
+            "description": "Solicitação processada"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  }
+                },
+                "required": [
+                  "email"
+                ]
+              },
+              "example": {
+                "email": "maria@example.com"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Autenticação"
+        ],
+        "summary": "Redefinir senha",
+        "responses": {
+          "200": {
+            "description": "Senha alterada"
+          },
+          "400": {
+            "description": "Token inválido ou expirado"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  },
+                  "nova_senha": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                },
+                "required": [
+                  "token",
+                  "nova_senha"
+                ]
+              },
+              "example": {
+                "token": "TOKEN_RECEBIDO_POR_EMAIL",
+                "nova_senha": "NovaSenhaForte123"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/produtos": {
+      "get": {
+        "tags": [
+          "Produtos"
+        ],
+        "summary": "Listar produtos ativos",
+        "responses": {
+          "200": {
+            "description": "Lista de produtos"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Produtos"
+        ],
+        "summary": "Criar produto (ADMIN)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Produto criado"
+          },
+          "403": {
+            "description": "Sem permissão"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nome": {
+                    "type": "string"
+                  },
+                  "descricao": {
+                    "type": "string"
+                  },
+                  "categoria": {
+                    "type": "string"
+                  },
+                  "preco": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "quantidade_estoque": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "nome",
+                  "preco"
+                ]
+              },
+              "example": {
+                "nome": "Terço Mariano",
+                "descricao": "Terço para oração",
+                "categoria": "ARTIGO_RELIGIOSO",
+                "preco": 35.9,
+                "quantidade_estoque": 10
+              }
+            }
+          }
+        }
+      }
+    },
+    "/produtos/{id}": {
+      "get": {
+        "tags": [
+          "Produtos"
+        ],
+        "summary": "Consultar produto",
+        "responses": {
+          "200": {
+            "description": "Produto"
+          },
+          "404": {
+            "description": "Não encontrado"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Produtos"
+        ],
+        "summary": "Atualizar produto (ADMIN)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Atualizado"
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nome": {
+                    "type": "string"
+                  },
+                  "descricao": {
+                    "type": "string"
+                  },
+                  "categoria": {
+                    "type": "string"
+                  },
+                  "preco": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "quantidade_estoque": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              },
+              "example": {
+                "preco": 39.9,
+                "quantidade_estoque": 8
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Produtos"
+        ],
+        "summary": "Desativar produto (ADMIN)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Desativado"
+          }
+        }
+      }
+    },
+    "/vendas/online": {
+      "post": {
+        "tags": [
+          "Vendas"
+        ],
+        "summary": "Criar pedido online (CLIENTE)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Pedido criado",
+            "content": {
+              "application/json": {
+                "example": {
+                  "mensagem": "Pedido realizado com sucesso! Seu pedido será entregue no endereço informado.",
+                  "venda": {
+                    "id": "00000000-0000-4000-8000-000000000002",
+                    "tipo_venda": "ONLINE",
+                    "valor_total": "71.80",
+                    "forma_pagamento": "PIX",
+                    "status": "AGUARDANDO_ENTREGA"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "itens": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "produto_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "quantidade": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "required": [
+                        "produto_id",
+                        "quantidade"
+                      ]
+                    }
+                  },
+                  "cep": {
+                    "type": "string",
+                    "pattern": "^[0-9]{8}$"
+                  },
+                  "numero": {
+                    "type": "string"
+                  },
+                  "forma_pagamento_entrega": {
+                    "type": "string",
+                    "enum": [
+                      "PIX",
+                      "DINHEIRO"
+                    ]
+                  },
+                  "precisa_troco": {
+                    "type": "boolean"
+                  },
+                  "troco_para": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "complemento": {
+                    "type": "string",
+                    "description": "Complemento opcional do endereço."
+                  }
+                },
+                "required": [
+                  "itens",
+                  "cep",
+                  "numero",
+                  "forma_pagamento_entrega"
+                ]
+              },
+              "example": {
+                "itens": [
+                  {
+                    "produto_id": "00000000-0000-4000-8000-000000000001",
+                    "quantidade": 2
+                  }
+                ],
+                "cep": "35570000",
+                "numero": "100",
+                "forma_pagamento_entrega": "PIX",
+                "complemento": "Casa, apartamento ou referência (opcional)"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vendas/minhas-compras": {
+      "get": {
+        "tags": [
+          "Vendas"
+        ],
+        "summary": "Listar compras do cliente",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Compras"
+          }
+        }
+      }
+    },
+    "/vendas/presencial": {
+      "post": {
+        "tags": [
+          "Vendas"
+        ],
+        "summary": "Registrar venda presencial (ADMIN/VOLUNTARIO)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Venda registrada",
+            "content": {
+              "application/json": {
+                "example": {
+                  "mensagem": "Venda presencial concluída com sucesso!",
+                  "venda": {
+                    "id": "00000000-0000-4000-8000-000000000003",
+                    "tipo_venda": "PRESENCIAL",
+                    "valor_total": "35.90",
+                    "forma_pagamento": "DINHEIRO",
+                    "status": "CONCLUIDO"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "itens": {
+                    "type": "array",
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "produto_id": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "quantidade": {
+                          "type": "integer",
+                          "minimum": 1
+                        }
+                      },
+                      "required": [
+                        "produto_id",
+                        "quantidade"
+                      ]
+                    }
+                  },
+                  "forma_pagamento": {
+                    "type": "string",
+                    "enum": [
+                      "PIX",
+                      "DINHEIRO"
+                    ]
+                  }
+                },
+                "required": [
+                  "itens"
+                ]
+              },
+              "example": {
+                "itens": [
+                  {
+                    "produto_id": "00000000-0000-4000-8000-000000000001",
+                    "quantidade": 1
+                  }
+                ],
+                "forma_pagamento": "DINHEIRO"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vendas": {
+      "get": {
+        "tags": [
+          "Vendas"
+        ],
+        "summary": "Listar vendas (ADMIN)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Vendas"
+          }
+        }
+      }
+    },
+    "/vendas/{id}/status": {
+      "patch": {
+        "tags": [
+          "Vendas"
+        ],
+        "summary": "Atualizar status (ADMIN)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Status atualizado"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "AGUARDANDO_RETIRADA",
+                      "AGUARDANDO_ENTREGA",
+                      "CONCLUIDO",
+                      "CANCELADO"
+                    ]
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              },
+              "example": {
+                "status": "CONCLUIDO"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/usuarios": {
+      "get": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Listar usuários (ADMIN)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Usuários"
+        ],
+        "summary": "Criar voluntário/usuário (ADMIN)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nome": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "senha": {
+                    "type": "string",
+                    "minLength": 8
+                  }
+                },
+                "required": [
+                  "nome",
+                  "email",
+                  "senha"
+                ]
+              },
+              "example": {
+                "nome": "João Voluntário",
+                "email": "joao@example.com",
+                "senha": "SenhaForte123"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/movimentacoes": {
+      "get": {
+        "tags": [
+          "Financeiro"
+        ],
+        "summary": "Listar movimentações (ADMIN)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "Financeiro"
+        ],
+        "summary": "Criar movimentação (ADMIN)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tipo": {
+                    "type": "string",
+                    "enum": [
+                      "ENTRADA",
+                      "SAIDA"
+                    ]
+                  },
+                  "valor": {
+                    "type": "number",
+                    "exclusiveMinimum": 0
+                  },
+                  "descricao": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "tipo",
+                  "valor",
+                  "descricao"
+                ]
+              },
+              "example": {
+                "tipo": "SAIDA",
+                "valor": 25.5,
+                "descricao": "Compra de materiais"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/movimentacoes/exportar": {
+      "get": {
+        "tags": [
+          "Financeiro"
+        ],
+        "summary": "Exportar relatório",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ]
+      }
+    },
+    "/cep/{cep}": {
+      "get": {
+        "tags": [
+          "CEP"
+        ],
+        "summary": "Consultar CEP via ViaCEP",
+        "responses": {
+          "200": {
+            "description": "Endereço"
+          },
+          "404": {
+            "description": "CEP não encontrado"
+          }
+        }
+      }
+    },
+    "/vendas/{id}": {
+      "get": {
+        "summary": "Consultar venda por ID (ADMIN)",
+        "responses": {
+          "200": {
+            "description": "Venda encontrada, com itens e produtos."
+          },
+          "404": {
+            "description": "Venda não encontrada."
+          },
+          "401": {
+            "description": "Não autenticado."
+          },
+          "403": {
+            "description": "Sem permissão."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "Vendas"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Cancelar venda e estornar estoque (ADMIN)",
+        "responses": {
+          "200": {
+            "description": "Venda cancelada."
+          },
+          "404": {
+            "description": "Venda não encontrada."
+          },
+          "409": {
+            "description": "Operação incompatível com o estado atual."
+          },
+          "401": {
+            "description": "Não autenticado."
+          },
+          "403": {
+            "description": "Sem permissão."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "Vendas"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/usuarios/{id}": {
+      "get": {
+        "summary": "Consultar usuário por ID (ADMIN)",
+        "responses": {
+          "200": {
+            "description": "Usuário encontrado."
+          },
+          "404": {
+            "description": "Usuário não encontrado."
+          },
+          "401": {
+            "description": "Não autenticado."
+          },
+          "403": {
+            "description": "Sem permissão."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "Usuários"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      },
+      "put": {
+        "summary": "Atualizar usuário (ADMIN)",
+        "responses": {
+          "200": {
+            "description": "Usuário atualizado."
+          },
+          "400": {
+            "description": "Dados inválidos."
+          },
+          "404": {
+            "description": "Usuário não encontrado."
+          },
+          "401": {
+            "description": "Não autenticado."
+          },
+          "403": {
+            "description": "Sem permissão."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "Usuários"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "nome": {
+                    "type": "string"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "senha": {
+                    "type": "string",
+                    "minLength": 8
+                  },
+                  "perfil": {
+                    "type": "string",
+                    "enum": [
+                      "CLIENTE",
+                      "VOLUNTARIO",
+                      "ADMIN"
+                    ]
+                  },
+                  "ativo": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Desativar usuário (ADMIN)",
+        "responses": {
+          "200": {
+            "description": "Usuário desativado."
+          },
+          "404": {
+            "description": "Usuário não encontrado."
+          },
+          "401": {
+            "description": "Não autenticado."
+          },
+          "403": {
+            "description": "Sem permissão."
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "tags": [
+          "Usuários"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/movimentacoes/resumo": {
+      "get": {
+        "tags": [
+          "Financeiro"
+        ],
+        "summary": "Consultar resumo do caixa (ADMIN)",
+        "description": "Calcula entradas, saídas e saldo atual a partir de todas as movimentações registradas.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resumo financeiro",
+            "content": {
+              "application/json": {
+                "example": {
+                  "entradas": 150.0,
+                  "saidas": 35.5,
+                  "saldo": 114.5,
+                  "quantidade_movimentacoes": 8
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado"
+          },
+          "403": {
+            "description": "Acesso permitido somente a ADMIN"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "Login": {
+        "type": "object",
+        "required": [
+          "email",
+          "senha"
+        ],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "senha": {
+            "type": "string",
+            "format": "password"
+          }
+        }
+      }
+    }
+  }
+}
